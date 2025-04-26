@@ -17,11 +17,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Configuration - use environment variables
-BOT_TOKEN = os.environ.get("BOT_TOKEN")
-CHANNEL_ID = os.environ.get("CHANNEL_ID")
-WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET")
-BOT_USERNAME = os.environ.get("BOT_USERNAME")
+# Configuration - use environment variables or default to provided values
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "7891364700:AAEryaDwoFsNw60DDJufT9bTfb2Qv0hLyD0")
+CHANNEL_ID = os.environ.get("CHANNEL_ID")  # No default, must be set in environment
+WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "your_secret_key_here")
+BOT_USERNAME = os.environ.get("BOT_USERNAME", "smxflixbot")
+WEBSITE_URL = os.environ.get("WEBSITE_URL", "https://smxflix.netlify.app")
 
 # Flask app for handling webhooks from your website
 app = Flask(__name__)
@@ -59,14 +60,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         del video_requests[user_id]
     else:
         await update.message.reply_text(
-            "Welcome! I can send you videos from our collection. "
-            "Visit our website to browse available videos."
+            f"Welcome to SMXFlix Bot! I can send you videos from our collection.\n\n"
+            f"Visit {WEBSITE_URL} to browse available videos."
         )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
     await update.message.reply_text(
-        "Visit our website to browse and download videos. "
+        f"Visit {WEBSITE_URL} to browse and download videos.\n"
         "When you select a video, you'll be redirected here to receive it."
     )
 
@@ -84,7 +85,8 @@ async def send_video(user_id: int, video_id: str) -> None:
         logger.error(f"Error sending video: {e}")
         await bot_app.bot.send_message(
             chat_id=user_id,
-            text=f"Sorry, I couldn't find that video (ID: {video_id}). Please try again later."
+            text=f"Sorry, I couldn't find that video (ID: {video_id}). Please try again later.\n\n"
+                 f"Go back to {WEBSITE_URL} to try another video."
         )
 
 # Flask route to handle video requests from your website
@@ -114,7 +116,47 @@ def request_video(video_id, user_id):
 
 @app.route('/')
 def index():
-    return "Telegram Video Bot is running!"
+    return f"""
+    <html>
+        <head>
+            <title>SMXFlix Bot</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 20px;
+                    text-align: center;
+                }}
+                .container {{
+                    max-width: 600px;
+                    margin: 0 auto;
+                }}
+                h1 {{
+                    color: #333;
+                }}
+                .btn {{
+                    display: inline-block;
+                    background-color: #0088cc;
+                    color: white;
+                    padding: 10px 20px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    margin-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>SMXFlix Bot is running!</h1>
+                <p>This is the backend service for the SMXFlix Telegram bot.</p>
+                <p>Visit our website to browse videos:</p>
+                <a href="{WEBSITE_URL}" class="btn">Go to SMXFlix</a>
+                <p>Or chat with our bot directly:</p>
+                <a href="https://t.me/{BOT_USERNAME}" class="btn">Open Bot</a>
+            </div>
+        </body>
+    </html>
+    """
 
 # Handler for when users share their contact
 async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -129,8 +171,50 @@ async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         del video_requests[user_id]
     else:
         await update.message.reply_text(
-            "Thanks for sharing your contact. Visit our website to browse videos."
+            f"Thanks for sharing your contact. Visit {WEBSITE_URL} to browse videos."
         )
+
+# Special route to handle direct video requests (useful for testing)
+@app.route('/direct-video/<video_id>/<user_id>')
+def direct_video(video_id, user_id):
+    return f"""
+    <html>
+        <head>
+            <title>SMXFlix Video Request</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 20px;
+                    text-align: center;
+                }}
+                .container {{
+                    max-width: 600px;
+                    margin: 0 auto;
+                }}
+                h1 {{
+                    color: #333;
+                }}
+                .btn {{
+                    display: inline-block;
+                    background-color: #0088cc;
+                    color: white;
+                    padding: 10px 20px;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    margin-top: 20px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>Your video is ready!</h1>
+                <p>Click the button below to receive your video on Telegram:</p>
+                <a href="/request-video/{video_id}/{user_id}?secret={WEBHOOK_SECRET}" class="btn">Get Video</a>
+            </div>
+        </body>
+    </html>
+    """
 
 if __name__ == "__main__":
     # Start the bot in a separate thread
